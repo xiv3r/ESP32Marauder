@@ -37,7 +37,7 @@
 #endif
 #include "settings.h"
 #include "Assets.h"
-#ifdef MARAUDER_FLIPPER
+#ifdef HAS_FLIPPER_LED
   #include "flipperLED.h"
 #elif defined(XIAO_ESP32_S3)
   #include "xiaoLED.h"
@@ -150,7 +150,7 @@ extern Buffer buffer_obj;
   extern BatteryInterface battery_obj;
 #endif
 extern Settings settings_obj;
-#ifdef MARAUDER_FLIPPER
+#ifdef HAS_FLIPPER_LED
   extern flipperLED flipper_led;
 #elif defined(XIAO_ESP32_S3)
   extern xiaoLED xiao_led;
@@ -201,11 +201,17 @@ struct Flipper {
   String name;
 };
 
+#ifdef HAS_PSRAM
+  extern struct mac_addr* mac_history;
+#endif
+
 class WiFiScan
 {
   private:
     // Wardriver thanks to https://github.com/JosephHewitt
-    struct mac_addr mac_history[mac_history_len];
+    #ifndef HAS_PSRAM
+      struct mac_addr mac_history[mac_history_len];
+    #endif
 
     uint8_t ap_mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
     uint8_t sta_mac[6] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
