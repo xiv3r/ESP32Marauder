@@ -1,5 +1,9 @@
 #include "EvilPortal.h"
 
+#ifdef HAS_PSRAM
+  char* index_html = nullptr;
+#endif
+
 AsyncWebServer server(80);
 
 EvilPortal::EvilPortal() {
@@ -23,6 +27,13 @@ void EvilPortal::setup() {
   #endif
 }
 
+void EvilPortal::cleanup() {
+  #ifdef HAS_PSRAM
+    free(index_html);
+    index_html = nullptr;
+  #endif
+}
+
 bool EvilPortal::begin(LinkedList<ssid>* ssids, LinkedList<AccessPoint>* access_points) {
   if (!this->setAP(ssids, access_points))
     return false;
@@ -43,12 +54,26 @@ String EvilPortal::get_password() {
 }
 
 void EvilPortal::setupServer() {
-  server.on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
-    request->send_P(200, "text/html", index_html);
-    Serial.println("client connected");
-    #ifdef HAS_SCREEN
-      this->sendToDisplay("Client connected to server");
-    #endif
+  #ifndef HAS_PSRAM
+    server.on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
+      request->send_P(200, "text/html", index_html);
+      Serial.println("client connected");
+      #ifdef HAS_SCREEN
+        this->sendToDisplay("Client connected to server");
+      #endif
+    });
+  #else
+    server.on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
+      request->send(200, "text/html", index_html);
+      Serial.println("client connected");
+      #ifdef HAS_SCREEN
+        this->sendToDisplay("Client connected to server");
+      #endif
+    });
+  #endif
+
+  server.on("/get-ap-name", HTTP_GET, [this](AsyncWebServerRequest *request) {
+    request->send(200, "text/plain", WiFi.softAPSSID());
   });
 
   server.on("/get", HTTP_GET, [this](AsyncWebServerRequest *request) {
@@ -78,7 +103,13 @@ void EvilPortal::setupServer() {
 void EvilPortal::setHtmlFromSerial() {
   Serial.println("Setting HTML from serial...");
   const char *htmlStr = Serial.readString().c_str();
-  strncpy(index_html, htmlStr, strlen(htmlStr));
+  #ifdef HAS_PSRAM
+    index_html = (char*) ps_malloc(MAX_HTML_SIZE);
+  #endif
+  strlcpy(index_html, htmlStr, strlen(htmlStr));
+  #ifdef HAS_PSRAM
+    index_html[MAX_HTML_SIZE - 1] = '\0';
+  #endif
   this->has_html = true;
   this->using_serial_html = true;
   Serial.println("html set");
@@ -119,7 +150,13 @@ bool EvilPortal::setHtml() {
       if (isPrintable(c))
         html.concat(c);
     }
-    strncpy(index_html, html.c_str(), strlen(html.c_str()));
+    #ifdef HAS_PSRAM
+      index_html = (char*) ps_malloc(MAX_HTML_SIZE);
+    #endif
+    strlcpy(index_html, html.c_str(), strlen(html.c_str()));
+    #ifdef HAS_PSRAM
+      index_html[MAX_HTML_SIZE - 1] = '\0';
+    #endif
     this->has_html = true;
     Serial.println("html set");
     html_file.close();
