@@ -341,8 +341,7 @@ int Settings::getNumberSettings() {
 String Settings::getSettingType(String key) {
   DynamicJsonDocument json(JSON_SETTING_SIZE);
 
-  DeserializationError error =
-      deserializeJson(json, this->json_settings_string);
+  DeserializationError error = deserializeJson(json, this->json_settings_string);
 
   if (error) {
     Serial.print(F("\nCould not parse json: "));
@@ -368,18 +367,16 @@ void Settings::printJsonSettings(String json_string) {
   for (int i = 0; i < (int)json["Settings"].size(); i++) {
     Serial.println("Name: " + json["Settings"][i]["name"].as<String>());
     Serial.println("Type: " + json["Settings"][i]["type"].as<String>());
-    Serial.println("Value: " + json["Settings"][i]["value"].as<String>());
-    Serial.println("----------------------------------------------");
+    Serial.println("Value: " + json["Settings"][i]["value"].as<String>() + "\n");
   }
 }
 
 // ---------------------------------------------------------------------------
 // createDefaultSettings — sets json_settings_string then rebuilds the cache.
 // ---------------------------------------------------------------------------
-bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index,
-                                     String typeStr, String name) {
+bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index, String typeStr, String name) {
   Serial.println(F("Creating default settings file: settings.json"));
-
+  
   File settingsFile = fs.open("/settings.json", FILE_WRITE);
 
   if (!settingsFile) {
@@ -440,7 +437,7 @@ bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index,
     jsonBuffer["Settings"][7]["range"]["min"] = "";
     jsonBuffer["Settings"][7]["range"]["max"] = "";
 
-    // jsonBuffer.printTo(settingsFile);
+    //jsonBuffer.printTo(settingsFile);
     if (serializeJson(jsonBuffer, settingsFile) == 0) {
     }
     if (serializeJson(jsonBuffer, settings_string) == 0) {
@@ -448,15 +445,17 @@ bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index,
   }
 
   else {
-    DynamicJsonDocument json(JSON_SETTING_SIZE);
+    DynamicJsonDocument json(JSON_SETTING_SIZE); // ArduinoJson v6
 
     if (deserializeJson(json, this->json_settings_string)) {
       Serial.println("Could not parse json to create new setting");
       return false;
     }
 
+    Serial.println("Creating " + typeStr + " setting...");
+
     if (typeStr == "bool") {
-      Serial.println("Creating bool setting...");
+      
       json["Settings"][index]["name"] = name;
       json["Settings"][index]["type"] = typeStr;
       json["Settings"][index]["value"] = true;
@@ -465,12 +464,12 @@ bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index,
 
       if (serializeJson(json, settings_string) == 0) {
       }
+
       if (serializeJson(json, settingsFile) == 0) {
       }
     }
 
     else if (typeStr == "String") {
-      Serial.println("Creating String setting...");
       json["Settings"][index]["name"] = name;
       json["Settings"][index]["type"] = typeStr;
       json["Settings"][index]["value"] = "";
@@ -479,11 +478,13 @@ bool Settings::createDefaultSettings(fs::FS &fs, bool spec, uint8_t index,
 
       if (serializeJson(json, settings_string) == 0) {
       }
+
       if (serializeJson(json, settingsFile) == 0) {
       }
     }
   }
 
+  // Close the file
   settingsFile.close();
 
   this->json_settings_string = settings_string;
